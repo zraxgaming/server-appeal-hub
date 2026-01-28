@@ -42,46 +42,64 @@ const Appeal = () => {
       </Helmet>
 
       <Layout>
-        {/* Banner Section */}
-        <div className="relative w-full overflow-hidden bg-gradient-primary text-primary-foreground">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-72 h-72 bg-accent rounded-full filter blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-            <div className="absolute bottom-0 right-0 w-72 h-72 bg-secondary rounded-full filter blur-3xl translate-x-1/2 translate-y-1/2"></div>
+        <div className="relative min-h-[calc(100vh-8rem)] py-12 overflow-hidden">
+          {/* Dotted Glow Background */}
+          <div className="absolute inset-0 w-full h-full">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+            
+            {/* Dotted Grid Pattern */}
+            <div 
+              className="absolute inset-0 opacity-30"
+              style={{
+                backgroundImage: `radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)`,
+                backgroundSize: '50px 50px',
+              }}
+            />
+            
+            {/* Glow Orbs */}
+            <div className="absolute top-20 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-float opacity-20" />
+            <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl animate-pulse opacity-20" />
+            <div className="absolute top-1/2 right-20 w-72 h-72 bg-accent/20 rounded-full blur-3xl animate-float opacity-15" style={{ animationDelay: '2s' }} />
           </div>
 
-          <div className="relative container mx-auto px-4 py-16 md:py-24">
-            <div className="flex items-start gap-4 mb-6 animate-slide-up">
-              <div className="p-3 rounded-xl bg-primary-foreground/20 backdrop-blur-sm">
-                <Shield className="h-8 w-8" />
-              </div>
-              <div className="flex-1">
-                <h1 className="text-4xl md:text-5xl font-bold mb-3 animate-slide-up stagger-1">
-                  Ban Appeal Form
-                </h1>
-                <p className="text-lg md:text-xl opacity-90 max-w-2xl animate-slide-up stagger-2">
-                  We believe in fair judgment. If you believe your ban was unjust, submit your appeal below for our expert staff to review.
-                </p>
+          {/* Content Container */}
+          <div className="relative z-10 flex flex-col py-12">
+            {/* Banner */}
+            <div className="w-full mb-12 animate-fade-in px-4 group">
+              <div className="container mx-auto">
+                <div className="relative rounded-2xl overflow-hidden shadow-2xl transition-all duration-500 group-hover:shadow-primary/30 group-hover:shadow-2xl">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-10" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-secondary/10 z-5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <img 
+                    src="/banner.png" 
+                    alt="Z-Craft Ban Appeal Banner" 
+                    className="w-full max-h-[250px] object-contain rounded-2xl transition-transform duration-500 group-hover:scale-105"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-4 animate-slide-up stagger-3">
-              <div className="flex items-center gap-2 bg-primary-foreground/10 backdrop-blur-sm px-4 py-2 rounded-lg">
-                <AlertCircle className="h-5 w-5" />
-                <span className="text-sm">48-72 hour response time</span>
+            {/* Form Container */}
+            <div className="container mx-auto px-4 flex-1">
+              <div className="animate-slide-up max-w-3xl mx-auto relative">
+                {/* Glow Background for Form */}
+                <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/20 via-secondary/10 to-accent/20 rounded-2xl blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                {/* Form Wrapper */}
+                <div className="relative bg-card/40 backdrop-blur-xl border border-border/30 rounded-2xl p-8 md:p-12 shadow-xl transition-all duration-500 hover:border-primary/30 hover:shadow-2xl group">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                  
+                  <div className="relative z-10">
+                    <div className="mb-8 animate-fade-in">
+                      <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                        Ban Appeal
+                      </h1>
+                    </div>
+                    
+                    <AppealForm />
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 bg-primary-foreground/10 backdrop-blur-sm px-4 py-2 rounded-lg">
-                <Shield className="h-5 w-5" />
-                <span className="text-sm">Fair & transparent review</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Form Section */}
-        <div className="min-h-[calc(100vh-400px)] flex items-center py-12">
-          <div className="container mx-auto px-4">
-            <div className="animate-slide-up">
-              <AppealForm />
             </div>
           </div>
         </div>

@@ -32,9 +32,9 @@ const appealSchema = z.object({
     .min(3, "Username must be at least 3 characters")
     .max(16, "Username must be less than 16 characters")
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
-  discordTag: z.string()
-    .min(2, "Discord tag is required")
-    .max(100, "Discord tag is too long"),
+  discordId: z.string()
+    .regex(/^\d+$/, "Discord ID must contain only numbers")
+    .min(1, "Discord ID is required"),
   email: z.string()
     .email("Please enter a valid email address"),
   banReason: z.string()
@@ -42,9 +42,6 @@ const appealSchema = z.object({
   appealReason: z.string()
     .min(50, "Please provide at least 50 characters explaining your appeal")
     .max(2000, "Appeal reason must be less than 2000 characters"),
-  additionalInfo: z.string()
-    .max(1000, "Additional info must be less than 1000 characters")
-    .optional(),
 });
 
 type AppealFormValues = z.infer<typeof appealSchema>;
@@ -68,11 +65,10 @@ export const AppealForm = () => {
     resolver: zodResolver(appealSchema),
     defaultValues: {
       username: "",
-      discordTag: "",
+      discordId: "",
       email: "",
       banReason: "",
       appealReason: "",
-      additionalInfo: "",
     },
   });
 
@@ -80,18 +76,8 @@ export const AppealForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Save to localStorage - cast to required type after zod validation
-      const savedAppeal = saveAppeal(data as Omit<import("@/lib/appeal-storage").AppealData, 'id' | 'submittedAt' | 'status'>);
-
-      // Save to Supabase
-      const supabaseAppeal = await saveAppealToSupabase({
-        username: data.username,
-        discord_tag: data.discordTag,
-        email: data.email,
-        ban_reason: data.banReason,
-        appeal_reason: data.appealReason,
-        additional_info: data.additionalInfo,
-      });
+      // Save to Supabase and localStorage
+      const savedAppeal = await saveAppeal(data as Omit<import("@/lib/appeal-storage").AppealData, 'id' | 'submittedAt' | 'status'>);
 
       // Try webhook (optional, will not fail if webhook is not configured)
       const webhookSuccess = await submitToWebhook(savedAppeal);
@@ -178,13 +164,16 @@ export const AppealForm = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
-                name="discordTag"
+                name="discordId"
                 render={({ field }) => (
                   <FormItem className="animate-fade-in stagger-1">
-                    <FormLabel className="text-base font-semibold">Discord Username</FormLabel>
+                    <FormLabel>Discord User ID</FormLabel>
                     <FormControl>
-                      <Input placeholder="username" className="h-11 text-base" {...field} />
+                      <Input placeholder="123456789012345678" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Your numeric Discord ID (right-click user in Discord to copy)
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -254,23 +243,7 @@ export const AppealForm = () => {
             />
 
             {/* Additional Info */}
-            <FormField
-              control={form.control}
-              name="additionalInfo"
-              render={({ field }) => (
-                <FormItem className="animate-fade-in stagger-5">
-                  <FormLabel className="text-base font-semibold">Additional Information (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Any additional context or information you'd like to provide..."
-                      className="min-h-[100px] resize-y text-base"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Removed - additionalInfo field */}
 
             {/* Info Box */}
             <div className="flex items-start gap-3 p-4 rounded-lg bg-gradient-to-r from-primary/5 to-accent/5 border border-primary/20">
