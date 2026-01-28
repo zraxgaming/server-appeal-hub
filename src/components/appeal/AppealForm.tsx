@@ -264,7 +264,7 @@ export const AppealForm = () => {
             <Button 
               type="submit" 
               size="lg" 
-              className="w-full gap-2 bg-gradient-primary hover:opacity-90"
+              className="w-full gap-2"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
