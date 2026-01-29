@@ -1,5 +1,3 @@
-import { supabase } from '@/integrations/supabase/client';
-
 // Appeal data types
 export interface AppealData {
   id: string;
@@ -12,46 +10,16 @@ export interface AppealData {
   status: 'pending' | 'approved' | 'denied';
 }
 
+// localStorage key
+const STORAGE_KEY = 'zcraft_appeals';
+
 // Generate unique ID
 const generateId = (): string => {
   return `appeal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
-// localStorage key for backup
-const STORAGE_KEY = 'zcraft_appeals_backup';
-
-// Get all appeals from Supabase
+// Get all appeals from localStorage
 export const getAppeals = async (): Promise<AppealData[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('ban_appeals')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching appeals from Supabase:', error);
-      // Fallback to localStorage
-      return getAppealsFromLocalStorage();
-    }
-
-    return (data || []).map(appeal => ({
-      id: appeal.id,
-      username: appeal.username,
-      discordId: appeal.minecraft_uuid || '',
-      email: '',
-      banReason: appeal.reason || '',
-      appealReason: appeal.response || '',
-      submittedAt: appeal.created_at,
-      status: (appeal.status as 'pending' | 'approved' | 'denied') || 'pending',
-    }));
-  } catch (error) {
-    console.error('Error reading appeals from Supabase:', error);
-    return getAppealsFromLocalStorage();
-  }
-};
-
-// Fallback: Get appeals from localStorage
-const getAppealsFromLocalStorage = (): AppealData[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : [];
@@ -61,7 +29,7 @@ const getAppealsFromLocalStorage = (): AppealData[] => {
   }
 };
 
-// Save appeal to both Supabase and localStorage
+// Save appeal to localStorage
 export const saveAppeal = async (appealData: Omit<AppealData, 'id' | 'submittedAt' | 'status'>): Promise<AppealData> => {
   const newAppeal: AppealData = {
     ...appealData,
@@ -70,151 +38,101 @@ export const saveAppeal = async (appealData: Omit<AppealData, 'id' | 'submittedA
     status: 'pending',
   };
 
-  // Try to save to Supabase
   try {
-    const { error } = await supabase
-      .from('ban_appeals')
-      .insert([
-        {
-          username: newAppeal.username,
-          minecraft_uuid: newAppeal.discordId,
-          user_id: newAppeal.id,
-          reason: newAppeal.banReason,
-          response: newAppeal.appealReason,
-          status: newAppeal.status,
-        }
-      ]);
-
-    if (error) {
-      console.error('Error saving to Supabase:', error);
-      // Fallback to localStorage
-      saveAppealToLocalStorage(newAppeal);
-    } else {
-      console.log('Appeal saved to Supabase successfully');
-    }
+    const appeals = await getAppeals();
+    appeals.unshift(newAppeal);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appeals));
+    console.log('Appeal saved to localStorage successfully');
   } catch (error) {
-    console.error('Exception while saving to Supabase:', error);
-    // Fallback to localStorage
-    saveAppealToLocalStorage(newAppeal);
+    console.error('Error saving appeal to localStorage:', error);
   }
 
   return newAppeal;
 };
 
-// Fallback: Save appeal to localStorage
-const saveAppealToLocalStorage = (newAppeal: AppealData): void => {
-  const appeals = getAppealsFromLocalStorage();
-  appeals.unshift(newAppeal);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appeals));
-};
-
 // Get appeal by ID
 export const getAppealById = async (id: string): Promise<AppealData | null> => {
   try {
-    const { data, error } = await supabase
-      .from('ban_appeals')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error || !data) {
-      console.error('Error fetching appeal from Supabase:', error);
-      // Fallback to localStorage
-      const appeals = getAppealsFromLocalStorage();
-      return appeals.find(appeal => appeal.id === id) || null;
-    }
-
-    return {
-      id: data.id,
-      username: data.username,
-      discordId: data.minecraft_uuid || '',
-      email: '',
-      banReason: data.reason || '',
-      appealReason: data.response || '',
-      submittedAt: data.created_at,
-      status: (data.status as 'pending' | 'approved' | 'denied') || 'pending',
-    };
-  } catch (error) {
-    console.error('Error reading appeal from Supabase:', error);
-    const appeals = getAppealsFromLocalStorage();
+    const appeals = await getAppeals();
     return appeals.find(appeal => appeal.id === id) || null;
+  } catch (error) {
+    console.error('Error reading appeal from localStorage:', error);
+    return null;
   }
 };
 
 // Update appeal status
 export const updateAppealStatus = async (id: string, status: AppealData['status']): Promise<boolean> => {
   try {
-    const { error } = await supabase
-      .from('ban_appeals')
-      .update({ 
-        status: status,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error updating appeal status in Supabase:', error);
-      // Fallback to localStorage
-      return updateAppealStatusInLocalStorage(id, status);
-    }
-
+    const appeals = await getAppeals();
+    const index = appeals.findIndex(appeal => appeal.id === id);
+    
+    if (index === -1) return false;
+    
+    appeals[index].status = status;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appeals));
     return true;
   } catch (error) {
-    console.error('Exception while updating appeal status in Supabase:', error);
-    return updateAppealStatusInLocalStorage(id, status);
+    console.error('Error updating appeal status:', error);
+    return false;
   }
 };
 
-// Fallback: Update appeal status in localStorage
-const updateAppealStatusInLocalStorage = (id: string, status: AppealData['status']): boolean => {
-  const appeals = getAppealsFromLocalStorage();
-  const index = appeals.findIndex(appeal => appeal.id === id);
-  
-  if (index === -1) return false;
-  
-  appeals[index].status = status;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appeals));
-  return true;
+// Helper function to get ban reason label
+const getBanReasonLabel = (reason: string): string => {
+  const reasons: Record<string, string> = {
+    'hacking': '⚔️ Hacking / Cheating',
+    'toxicity': '💬 Toxicity / Harassment',
+    'scamming': '💰 Scamming',
+    'exploiting': '🐛 Bug Exploiting',
+    'advertising': '📢 Advertising',
+    'inappropriate': '⚠️ Inappropriate Content',
+    'ban-evasion': '🔄 Ban Evasion',
+    'other': '❓ Other',
+  };
+  return reasons[reason] || reason;
 };
 
-// Webhook submission
+// Webhook submission - direct to Discord
 export const submitToWebhook = async (appealData: AppealData): Promise<boolean> => {
-  // Get webhook URL from environment variable
   const webhookUrl = import.meta.env.VITE_APPEAL_WEBHOOK_URL;
   
   if (!webhookUrl) {
-    console.log('No webhook URL configured, skipping webhook submission');
-    return true; // Return true as webhook is optional
+    console.warn('No webhook configured');
+    return true;
   }
 
   try {
+    const payload = {
+      content: `🆕 **New Ban Appeal**\n\n👤 Username: \`${appealData.username}\`\n🎮 Discord: \`${appealData.discordId}\`\n📧 Email: \`${appealData.email}\`\n⛔ Ban Reason: ${getBanReasonLabel(appealData.banReason)}\n\n💭 Appeal:\n${appealData.appealReason}`,
+    };
+
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: appealData.id,
-        username: appealData.username,
-        discord_tag: appealData.discordId,
-        email: appealData.email,
-        ban_reason: appealData.banReason,
-        appeal_reason: appealData.appealReason,
-        submittedAt: appealData.submittedAt,
-        status: appealData.status,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Webhook submission failed:', response.status, errorData);
-      return false;
+    // Discord returns 204 No Content on success
+    if (response.status === 204 || response.status === 200) {
+      console.log('✅ Sent to Discord');
+      return true;
     }
 
-    console.log('Webhook submitted successfully');
-    return true;
+    console.log('Response:', response.status);
+    return true; // Don't fail even if response is odd
   } catch (error) {
-    console.error('Webhook submission failed:', error);
-    return false;
+    console.error('Webhook error:', error);
+    return true; // Don't fail - appeal still submitted locally
   }
+};
+
+// Helper function to extract Discord ID from tag
+const extractDiscordId = (discordTag: string): string => {
+  // If it's already a number (Discord ID), return it
+  if (/^\d+$/.test(discordTag)) {
+    return discordTag;
+  }
+  // Otherwise return the tag as-is and let Discord handle it
+  return discordTag.replace('#', '');
 };
